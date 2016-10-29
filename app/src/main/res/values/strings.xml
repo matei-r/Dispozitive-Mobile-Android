@@ -1,3 +1,8 @@
 <resources>
-    <string name="app_name">Lab_Android</string>
+    <string name="app_name">Musical Instruments</string>
+    <string-array name="type_array">
+        <item>Chords</item>
+        <item>Percusion</item>
+        <item>Keyboard</item>
+    </string-array>
 </resources>
