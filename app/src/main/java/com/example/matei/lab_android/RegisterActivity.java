@@ -1,7 +1,6 @@
 package com.example.matei.lab_android;
 
 import android.content.Intent;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
@@ -12,7 +11,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import com.android.volley.Request;
-import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.Volley;
@@ -22,6 +20,7 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 public class RegisterActivity extends AppCompatActivity {
     EditText editTextName,editTextUsername,editTextPassword;
@@ -105,7 +104,7 @@ public class RegisterActivity extends AppCompatActivity {
         String username = editTextUsername.getText().toString();
         String password = editTextPassword.getText().toString();
 
-        String REGISTER_URL = "http://192.168.1.102/am/register.php";
+        String REGISTER_URL = "http://192.168.1.101/am/register.php";
         Map<String,String> params = new HashMap<String,String>();
         params.put("name",name);
         params.put("username",username);
@@ -117,7 +116,7 @@ public class RegisterActivity extends AppCompatActivity {
                     public void onResponse(JSONObject response) {
                         try {
                             if(response.getBoolean("success")){
-                                Intent intent = new Intent(getBaseContext(),LoginActivity.class);
+                                Intent intent = new Intent(RegisterActivity.this,LoginActivity.class);
                                 startActivity(intent);
                             } else {
                                 android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(RegisterActivity.this);
@@ -146,6 +145,8 @@ public class RegisterActivity extends AppCompatActivity {
                         .show();
             }
         });
-        Volley.newRequestQueue(this).add(jsonObjectRequest);
+
+        Volley.newRequestQueue(RegisterActivity.this).add(jsonObjectRequest);
+
     }
 }

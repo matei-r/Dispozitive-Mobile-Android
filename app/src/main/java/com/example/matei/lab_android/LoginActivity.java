@@ -19,6 +19,9 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+
+import static android.app.PendingIntent.getActivity;
 
 public class LoginActivity extends AppCompatActivity {
     EditText editTextUsername,editTextPassword;
@@ -48,7 +51,7 @@ public class LoginActivity extends AppCompatActivity {
         String username = editTextUsername.getText().toString();
         String password = editTextPassword.getText().toString();
 
-        String LOGIN_URL = "http://192.168.1.102/am/login.php";
+        String LOGIN_URL = "http://192.168.1.101/am/login.php";
         Map<String,String> params = new HashMap<String,String>();
         params.put("username",username);
         params.put("password",password);
@@ -59,7 +62,7 @@ public class LoginActivity extends AppCompatActivity {
                     public void onResponse(JSONObject response) {
                         try {
                             if(response.getBoolean("success")){
-                                Intent intent = new Intent(getBaseContext(),UserProfileActivity.class);
+                                Intent intent = new Intent(LoginActivity.this,UserProfileActivity.class);
                                 intent.putExtra("name",response.getString("name"));
                                 intent.putExtra("id",response.getString("id"));
                                 startActivity(intent);
@@ -81,15 +84,16 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 }, new Response.ErrorListener(){
 
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
-                        builder.setMessage(error.toString())
-                                .setNegativeButton("Retry",null)
-                                .create()
-                                .show();
-                    }
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
+                builder.setMessage(error.toString())
+                        .setNegativeButton("Retry",null)
+                        .create()
+                        .show();
+            }
         });
-        Volley.newRequestQueue(this).add(jsonObjectRequest);
+
+        Volley.newRequestQueue(LoginActivity.this).add(jsonObjectRequest);
     }
 }
