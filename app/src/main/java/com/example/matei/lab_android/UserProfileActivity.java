@@ -28,15 +28,36 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.Volley;
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
+import com.google.gson.GsonBuilder;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+
+import javax.net.ssl.HttpsURLConnection;
 
 public class UserProfileActivity extends AppCompatActivity {
     TextView welcomeMessage,logout;
@@ -47,6 +68,7 @@ public class UserProfileActivity extends AppCompatActivity {
     Button deleteBtn;
     int selected = 0;
     ArrayList<String> idSelected = new ArrayList<String>();
+    BarChart barChart;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,7 +87,7 @@ public class UserProfileActivity extends AppCompatActivity {
 
         instrumentListView = (ListView) findViewById(R.id.listview);
 
-        loadList();
+        onResume();
 
         instrumentListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -101,7 +123,11 @@ public class UserProfileActivity extends AppCompatActivity {
 
     }
 
-    private void loadList() {
+    public interface VolleyCallback{
+        void onSuccess(JSONArray result);
+    }
+
+    public void loadList(final VolleyCallback callback) {
 
         instrumentList = new ArrayList<Instrument>();
 
@@ -109,21 +135,13 @@ public class UserProfileActivity extends AppCompatActivity {
         Map<String,String> params = new HashMap<String,String>();
         params.put("id",id);
 
-
         CustomRequest jsonArrayRequest = new CustomRequest(Request.Method.POST,GET_URL,params,
                 new Response.Listener<JSONObject>(){
                     @Override
                     public void onResponse(JSONObject response) {
                         try {
                             JSONArray arr = response.getJSONArray("data");
-                            for(int i = 0;i < arr.length();i++) {
-                                JSONObject instrument = (JSONObject) arr.get(i);
-                                String name = instrument.getString("name");
-                                String type = instrument.getString("type");
-                                int id = instrument.getInt("id");
-                                instrumentList.add(new Instrument(id,name,type));
-                            }
-
+                            callback.onSuccess(arr);
                         } catch (JSONException e) {
                             AlertDialog.Builder builder = new AlertDialog.Builder(UserProfileActivity.this);
                             builder.setMessage(e.toString())
@@ -145,12 +163,40 @@ public class UserProfileActivity extends AppCompatActivity {
             }
         });
 
-        jsonArrayRequest.setShouldCache(false);
         Volley.newRequestQueue(UserProfileActivity.this).add(jsonArrayRequest);
-        InstrumentAdapter adapter = new InstrumentAdapter(this,R.layout.list_item,instrumentList);
-        instrumentListView.setAdapter(adapter);
-        instrumentListView.setItemsCanFocus(false);
-        instrumentListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+
+    }
+
+    public void onResume(){
+        super.onResume();
+        loadList(new VolleyCallback() {
+            @Override
+            public void onSuccess(JSONArray result) {
+
+                instrumentList.clear();
+                int i;
+
+                for(i=0;i<result.length();i++){
+                    try {
+                        JSONObject obj = result.getJSONObject(i);
+                        int id = obj.getInt("id");
+                        String name = obj.getString("name");
+                        String type = obj.getString("type");
+                        Instrument instr = new Instrument(id,name,type);
+                        instrumentList.add(instr);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                InstrumentAdapter adapter = new InstrumentAdapter(UserProfileActivity.this,R.layout.list_item,instrumentList);
+                instrumentListView.setAdapter(adapter);
+                instrumentListView.setItemsCanFocus(false);
+                instrumentListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+
+                //buildChart();
+            }
+        });
     }
 
     public void DeleteSelected(View view){
@@ -216,4 +262,45 @@ public class UserProfileActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
+    public ArrayList<Integer> getChartData(){
+        String[] typeArray;
+        typeArray = getResources().getStringArray(R.array.type_array);
+        int i,k;
+        ArrayList<Integer> data = new ArrayList<Integer>();
+
+        for(k=0;k<typeArray.length;k++) {
+            int freq = 0;
+            for (i = 0; i < instrumentList.size(); i++) {
+                if(typeArray[k].equals(instrumentList.get(i).getType())){
+                    freq++;
+                }
+            }
+            data.add(freq);
+        }
+        return data;
+    }
+
+    public void buildChart(){
+
+        barChart = (BarChart) findViewById(R.id.barChart);
+
+        ArrayList<BarEntry> entries = new ArrayList<>();
+
+        ArrayList<Integer> data = getChartData();
+
+        int i;
+        for(i=0;i<data.size();i++){
+            int freq = data.get(i);
+            Log.d("Index",String.valueOf(freq));
+            entries.add(new BarEntry(freq, i));
+        }
+
+        BarDataSet barDataSet = new BarDataSet(entries,"Ceva");
+
+        ArrayList<IBarDataSet> dataSets = new ArrayList<>();
+        dataSets.add((IBarDataSet) barDataSet);
+
+        BarData theData = new BarData(dataSets);
+        barChart.setData(theData);
+    }
 }

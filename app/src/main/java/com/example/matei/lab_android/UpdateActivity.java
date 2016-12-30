@@ -105,4 +105,11 @@ public class UpdateActivity extends AppCompatActivity {
 
         Volley.newRequestQueue(UpdateActivity.this).add(jsonObjectRequest);
     }
+
+    public void cancelAction(View view){
+        Intent intent = new Intent(UpdateActivity.this,UserProfileActivity.class);
+        intent.putExtra("id",user_id);
+        intent.putExtra("name",user_name);
+        startActivity(intent);
+    }
 }

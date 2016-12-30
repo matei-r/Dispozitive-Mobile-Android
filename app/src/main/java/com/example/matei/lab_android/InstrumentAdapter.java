@@ -1,6 +1,7 @@
 package com.example.matei.lab_android;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -48,6 +49,7 @@ class Instrument {
     }
 
     private String type;
+
 }
 
 public class InstrumentAdapter extends ArrayAdapter<Instrument> {

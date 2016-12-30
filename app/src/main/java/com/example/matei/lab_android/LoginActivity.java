@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.android.volley.Request;
@@ -25,6 +26,7 @@ import static android.app.PendingIntent.getActivity;
 
 public class LoginActivity extends AppCompatActivity {
     EditText editTextUsername,editTextPassword;
+    ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,11 +47,21 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
+        progressBar = (ProgressBar) findViewById(R.id.loadingBar);
+        progressBar.setVisibility(View.INVISIBLE);
+    }
+
+    @Override
+    protected void onRestart(){
+        super.onRestart();
+        progressBar.setVisibility(View.INVISIBLE);
     }
 
     public void OnLogin(View view){
         String username = editTextUsername.getText().toString();
         String password = editTextPassword.getText().toString();
+
+        progressBar.setVisibility(View.VISIBLE);
 
         String LOGIN_URL = "http://192.168.1.101/am/login.php";
         Map<String,String> params = new HashMap<String,String>();
@@ -67,6 +79,7 @@ public class LoginActivity extends AppCompatActivity {
                                 intent.putExtra("id",response.getString("id"));
                                 startActivity(intent);
                             } else {
+                                progressBar.setVisibility(View.INVISIBLE);
                                 AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
                                 builder.setMessage("Login Failed")
                                         .setNegativeButton("Retry",null)
@@ -74,6 +87,7 @@ public class LoginActivity extends AppCompatActivity {
                                         .show();
                             }
                         } catch (JSONException e) {
+                            progressBar.setVisibility(View.INVISIBLE);
                             AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
                             builder.setMessage(e.toString())
                                     .setNegativeButton("Retry",null)
@@ -86,6 +100,7 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onErrorResponse(VolleyError error) {
+                progressBar.setVisibility(View.INVISIBLE);
                 AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
                 builder.setMessage(error.toString())
                         .setNegativeButton("Retry",null)
