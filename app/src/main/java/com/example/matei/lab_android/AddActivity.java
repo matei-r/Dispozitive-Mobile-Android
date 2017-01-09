@@ -1,8 +1,13 @@
 package com.example.matei.lab_android;
 
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -25,6 +30,9 @@ public class AddActivity extends AppCompatActivity {
     EditText nameEdit;
     String id;
     String user_name;
+    boolean connected;
+
+    DBController controller;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,19 +45,51 @@ public class AddActivity extends AppCompatActivity {
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
 
+        controller = new DBController(this);
+
+        checkConnection();
+
         Intent addIntent = getIntent();
         id = addIntent.getStringExtra("id");
         user_name = addIntent.getStringExtra("name");
         nameEdit = (EditText) findViewById(R.id.editName);
     }
 
+    private void checkConnection(){
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if(connectivityManager.getActiveNetworkInfo() == null){
+            connected = false;
+        } else {
+            connected = true;
+        }
+    }
+
     public void saveInstrument(View view){
+        saveInstrumentOffline();
+        if(connected == true) {
+            saveInstrumentOnline();
+        } else {
+            Intent intent = new Intent(AddActivity.this, UserProfileActivity.class);
+            intent.putExtra("id", id);
+            intent.putExtra("name", user_name);
+            startActivity(intent);
+        }
+    }
+
+    private void saveInstrumentOffline() {
+        Instrument instrument = new Instrument(Integer.valueOf(id),nameEdit.getText().toString(),spinner.getSelectedItem().toString());
+        controller.addInstrument(instrument,connected);
+    }
+
+    private void saveInstrumentOnline(){
 
         String name = nameEdit.getText().toString();
         String type = spinner.getSelectedItem().toString();
         String user_id = id;
 
-        String ADD_URL = "http://192.168.1.101/am/addInstrument.php";
+        String ADD_URL = "http://192.168.1.102:8080/am/addInstrument.php";
         Map<String,String> params = new HashMap<String,String>();
         params.put("name",name);
         params.put("type",type);
@@ -61,9 +101,9 @@ public class AddActivity extends AppCompatActivity {
                     public void onResponse(JSONObject response) {
                         try {
                             if(response.getBoolean("success")){
-                                Intent intent = new Intent(AddActivity.this,UserProfileActivity.class);
-                                intent.putExtra("id",id);
-                                intent.putExtra("name",user_name);
+                                Intent intent = new Intent(AddActivity.this, UserProfileActivity.class);
+                                intent.putExtra("id", id);
+                                intent.putExtra("name", user_name);
                                 startActivity(intent);
                             } else {
                                 android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(AddActivity.this);
@@ -94,6 +134,7 @@ public class AddActivity extends AppCompatActivity {
         });
 
         Volley.newRequestQueue(AddActivity.this).add(jsonObjectRequest);
+
     }
 
     public void cancelAction(View view){

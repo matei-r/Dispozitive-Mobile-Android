@@ -1,10 +1,13 @@
 package com.example.matei.lab_android;
 
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,17 +26,23 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 public class RegisterActivity extends AppCompatActivity {
-    EditText editTextName,editTextUsername,editTextPassword;
+    EditText editTextName,editTextUsername,editTextPassword,editTextEmail;
+    DBController controller;
+    boolean connected;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
+        Intent intent = this.getIntent();
+        controller = new DBController(this);
+        checkConnection();
+
         editTextName = (EditText) findViewById(R.id.editTextName);
         editTextUsername = (EditText) findViewById(R.id.editTextUsername);
         editTextPassword = (EditText) findViewById(R.id.editTextPassword);
-        final EditText editTextRepeatPassword = (EditText) findViewById(R.id.editTextRepeatPassword);
+        editTextEmail = (EditText) findViewById(R.id.editTextEmail);
 
         final Button registerButton = (Button) findViewById(R.id.registerButton);
         final TextView backLink = (TextView) findViewById(R.id.backLink);
@@ -46,67 +55,41 @@ public class RegisterActivity extends AppCompatActivity {
             }
         });
 
-        final TextView textViewError = (TextView) findViewById(R.id.textViewError);
-
-        editTextPassword.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String Password = s.toString();
-                String pass = editTextRepeatPassword.getText().toString();
-                if (!Password.equals(pass)) {
-                    textViewError.setText("Passwords must match!");
-                } else {
-                    textViewError.setText("");
-                }
-
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-
-            }
-        });
-
-        editTextRepeatPassword.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
-
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                String Password = s.toString();
-                String pass = editTextPassword.getText().toString();
-                if (!Password.equals(pass)) {
-                    textViewError.setText("Passwords must match!");
-                } else {
-                    textViewError.setText("");
-                }
-
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-
-            }
-        });
     }
 
+    private void checkConnection(){
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if(connectivityManager.getActiveNetworkInfo() == null){
+            connected = false;
+        } else {
+            connected = true;
+        }
+    }
+
+
     public void OnRegister(View view){
+        OnRegisterOffline();
+        if(connected == true) {
+            OnRegisterOnline();
+        } else {
+            Intent intent = new Intent(RegisterActivity.this,LoginActivity.class);
+            startActivity(intent);
+        }
+    }
+
+    private void OnRegisterOnline() {
+
         String name = editTextName.getText().toString();
         String username = editTextUsername.getText().toString();
         String password = editTextPassword.getText().toString();
+        String email = editTextEmail.getText().toString();
 
-        String REGISTER_URL = "http://192.168.1.101/am/register.php";
+        String REGISTER_URL = "http://192.168.1.102:8080/am/register.php";
         Map<String,String> params = new HashMap<String,String>();
         params.put("name",name);
+        params.put("email",email);
         params.put("username",username);
         params.put("password",password);
 
@@ -147,6 +130,14 @@ public class RegisterActivity extends AppCompatActivity {
         });
 
         Volley.newRequestQueue(RegisterActivity.this).add(jsonObjectRequest);
+    }
 
+    private void OnRegisterOffline() {
+        User user = new User();
+        user.setName(editTextName.getText().toString());
+        user.setUsername(editTextUsername.getText().toString());
+        user.setPassword(editTextPassword.getText().toString());
+        user.setEmail(editTextEmail.getText().toString());
+        controller.addUser(user,connected);
     }
 }

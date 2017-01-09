@@ -3,6 +3,7 @@ package com.example.matei.lab_android;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
@@ -65,10 +66,14 @@ public class UserProfileActivity extends AppCompatActivity {
     ArrayList<Instrument> instrumentList;
     String id;
     String name;
+    String email;
     Button deleteBtn;
     int selected = 0;
     ArrayList<String> idSelected = new ArrayList<String>();
     BarChart barChart;
+
+    DBController controller;
+    boolean connected = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,16 +83,21 @@ public class UserProfileActivity extends AppCompatActivity {
         welcomeMessage = (TextView) findViewById(R.id.textViewName);
         deleteBtn = (Button) findViewById(R.id.deleteButton);
 
+
         Intent profileIntent = getIntent();
         name = profileIntent.getStringExtra("name");
         id = profileIntent.getStringExtra("id");
+        email = profileIntent.getStringExtra("email");
 
         String message = "Welcome to your profile " + name + "!";
         welcomeMessage.setText(message);
 
+        controller = new DBController(this);
+
         instrumentListView = (ListView) findViewById(R.id.listview);
 
-        onResume();
+        checkConnection();
+        loadData();
 
         instrumentListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -123,6 +133,25 @@ public class UserProfileActivity extends AppCompatActivity {
 
     }
 
+    private void loadData() {
+        if(connected == true) {
+            onResume();
+        } else {
+            loadOffline();
+        }
+    }
+
+    private void checkConnection(){
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if(connectivityManager.getActiveNetworkInfo() == null){
+            connected = false;
+        } else {
+            connected = true;
+        }
+    }
+
     public interface VolleyCallback{
         void onSuccess(JSONArray result);
     }
@@ -131,7 +160,7 @@ public class UserProfileActivity extends AppCompatActivity {
 
         instrumentList = new ArrayList<Instrument>();
 
-        String GET_URL = "http://192.168.1.101/am/getInstruments.php";
+        String GET_URL = "http://192.168.1.102:8080/am/getInstruments.php";
         Map<String,String> params = new HashMap<String,String>();
         params.put("id",id);
 
@@ -167,6 +196,14 @@ public class UserProfileActivity extends AppCompatActivity {
 
     }
 
+    public void loadOffline() {
+        instrumentList = controller.getAllInstruments(id);
+        InstrumentAdapter adapter = new InstrumentAdapter(UserProfileActivity.this,R.layout.list_item,instrumentList);
+        instrumentListView.setAdapter(adapter);
+        instrumentListView.setItemsCanFocus(false);
+        instrumentListView.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+    }
+
     public void onResume(){
         super.onResume();
         loadList(new VolleyCallback() {
@@ -200,6 +237,18 @@ public class UserProfileActivity extends AppCompatActivity {
     }
 
     public void DeleteSelected(View view){
+        deleteSelectedOffline();
+        if(connected == true) {
+            deleteSelectedOnline();
+        }
+        Intent intent = new Intent(UserProfileActivity.this,UserProfileActivity.class);
+        intent.putExtra("id",id);
+        intent.putExtra("name",name);
+        intent.putExtra("email",email);
+        startActivity(intent);
+    }
+
+    public void deleteSelectedOnline(){
         String getSelected = "";
         for(int i=0;i<idSelected.size();i++){
             getSelected += idSelected.get(i) + ";";
@@ -208,7 +257,7 @@ public class UserProfileActivity extends AppCompatActivity {
 
             getSelected = getSelected.substring(0, getSelected.length() - 1);
 
-            String DELETE_URL = "http://192.168.1.101/am/deleteInstruments.php";
+            String DELETE_URL = "http://192.168.1.102:8080/am/deleteInstruments.php";
             Map<String, String> params = new HashMap<String, String>();
             params.put("ids", getSelected);
 
@@ -219,10 +268,6 @@ public class UserProfileActivity extends AppCompatActivity {
                         public void onResponse(JSONObject response) {
                             try {
                                 if(response.getBoolean("success")){
-                                    Intent intent = new Intent(UserProfileActivity.this,UserProfileActivity.class);
-                                    intent.putExtra("id",id);
-                                    intent.putExtra("name",name);
-                                    startActivity(intent);
                                 } else {
                                     AlertDialog.Builder builder = new AlertDialog.Builder(UserProfileActivity.this);
                                     builder.setMessage("Delete Failed")
@@ -252,6 +297,17 @@ public class UserProfileActivity extends AppCompatActivity {
             });
 
             Volley.newRequestQueue(UserProfileActivity.this).add(jsonObjectRequest);
+        }
+    }
+
+    public void deleteSelectedOffline() {
+        String getSelected = "";
+        for (int i = 0; i < idSelected.size(); i++) {
+            getSelected += idSelected.get(i) + ";";
+        }
+        if (idSelected.size() > 0) {
+            getSelected = getSelected.substring(0, getSelected.length() - 1);
+            controller.deleteInstrument(getSelected,connected);
         }
     }
 
@@ -302,5 +358,27 @@ public class UserProfileActivity extends AppCompatActivity {
 
         BarData theData = new BarData(dataSets);
         barChart.setData(theData);
+    }
+
+    public void SendMail(View view){
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("message/rfc822");
+        intent.putExtra(Intent.EXTRA_EMAIL, new String[]{email});
+        intent.putExtra(Intent.EXTRA_SUBJECT, "Product report");
+        String text = "";
+        ArrayList<Instrument> instruments = controller.getAllInstruments(id);
+        for(int i = 0 ; i < instruments.size() ; i++){
+            text += instruments.get(i).getName() + " " + instruments.get(i).getType() + "\n";
+        }
+        intent.putExtra(Intent.EXTRA_TEXT,text);
+        try {
+            if(connected == true) {
+                startActivity(Intent.createChooser(intent, "Send email... "));
+            } else {
+                Toast.makeText(UserProfileActivity.this, "No internet connection.",Toast.LENGTH_SHORT).show();
+            }
+        } catch (android.content.ActivityNotFoundException ex) {
+            Toast.makeText(UserProfileActivity.this, "No email clients installed.",Toast.LENGTH_SHORT).show();
+        }
     }
 }

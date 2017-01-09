@@ -55,11 +55,24 @@
         android:onClick="DeleteSelected"
         android:clickable="true"/>
 
+    <Button
+        android:text="Send mail"
+        android:id="@+id/mailButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/deleteButton"
+        android:onClick="SendMail"
+        android:clickable="true"/>
+
     <com.github.mikephil.charting.charts.BarChart
         android:layout_width="wrap_content"
         android:id="@+id/barChart"
         android:layout_height="250dp"
-        android:layout_below="@+id/deleteButton"
+        android:layout_below="@+id/mailButton"
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true"
         android:layout_alignParentLeft="true"

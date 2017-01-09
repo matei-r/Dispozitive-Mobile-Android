@@ -1,6 +1,8 @@
 package com.example.matei.lab_android;
 
+import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -29,6 +31,8 @@ public class UpdateActivity extends AppCompatActivity {
     String instr_type;
     String user_id;
     String user_name;
+    boolean connected;
+    DBController controller;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,6 +46,9 @@ public class UpdateActivity extends AppCompatActivity {
         user_id = updateIntent.getStringExtra("user_id");
         user_name = updateIntent.getStringExtra("user_name");
 
+        checkConnection();
+        controller = new DBController(this);
+
         spinner = (Spinner) findViewById(R.id.chooseType);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,R.array.type_array,android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_item);
@@ -53,13 +60,43 @@ public class UpdateActivity extends AppCompatActivity {
         nameEdit.setText(instr_name);
     }
 
+    private void checkConnection(){
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+
+        if(connectivityManager.getActiveNetworkInfo() == null){
+            connected = false;
+        } else {
+            connected = true;
+        }
+    }
+
     public void updateInstrument(View view){
+        updateInstrumentOffline();
+        if(connected == true){
+            updateInstrumentOnline();
+        }
+        Intent intent = new Intent(UpdateActivity.this,UserProfileActivity.class);
+        intent.putExtra("id",user_id);
+        intent.putExtra("name",user_name);
+        startActivity(intent);
+    }
+
+    public void updateInstrumentOffline() {
+        String name = nameEdit.getText().toString();
+        String type = spinner.getSelectedItem().toString();
+        String instr_id = id;
+        Instrument instr = new Instrument(Integer.valueOf(instr_id),name,type);
+        controller.updateInstrument(instr,connected);
+    }
+
+    public void updateInstrumentOnline() {
 
         String name = nameEdit.getText().toString();
         String type = spinner.getSelectedItem().toString();
         String instr_id = id;
 
-        String UPDATE_URL = "http://192.168.1.101/am/updateInstrument.php";
+        String UPDATE_URL = "http://192.168.1.102:8080/am/updateInstrument.php";
         Map<String,String> params = new HashMap<String,String>();
         params.put("name",name);
         params.put("type",type);
@@ -104,6 +141,7 @@ public class UpdateActivity extends AppCompatActivity {
         });
 
         Volley.newRequestQueue(UpdateActivity.this).add(jsonObjectRequest);
+
     }
 
     public void cancelAction(View view){
